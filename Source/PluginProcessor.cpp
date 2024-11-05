@@ -93,8 +93,9 @@ void DelayismAudioProcessor::changeProgramName (int index, const juce::String& n
 //==============================================================================
 void DelayismAudioProcessor::prepareToPlay (double sampleRate, int samplesPerBlock)
 {
-    // Use this method as the place to do any pre-playback
-    // initialisation that you need..
+    auto delayBufferSize = sampleRate * 2.0;
+//    delayBuffer.setSize(getTotalNumOutputChannels(), (int)delayBufferSize);
+    delayBuffer.setSize(getTotalNumOutputChannels(), static_cast<int>(delayBufferSize));
 }
 
 void DelayismAudioProcessor::releaseResources()
@@ -143,18 +144,43 @@ void DelayismAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, juc
     // this code if your algorithm always overwrites all the output channels.
     for (auto i = totalNumInputChannels; i < totalNumOutputChannels; ++i)
         buffer.clear (i, 0, buffer.getNumSamples());
+    
+    auto bufferSize = buffer.getNumSamples();
+    auto delayBufferSize = delayBuffer.getNumSamples();
 
-    // This is the place where you'd normally do the guts of your plugin's
-    // audio processing...
-    // Make sure to reset the state if your inner loop is processing
-    // the samples and the outer loop is handling the channels.
-    // Alternatively, you can process the samples with the channels
-    // interleaved by keeping the same state.
     for (int channel = 0; channel < totalNumInputChannels; ++channel)
     {
         auto* channelData = buffer.getWritePointer (channel);
 
-        // ..do something to the data...
+        fillBuffer(channel, writePosition, channelData, bufferSize, delayBufferSize);
+    }
+    
+    writePosition += bufferSize; // position jumps by this amount of samples on every iteration
+    writePosition %= delayBufferSize; // bound position value to stay inside delayBufferSize
+    
+}
+
+void DelayismAudioProcessor::fillBuffer(int channel, int writePosition, float* channelData, int bufferSize, int delayBufferSize)
+{
+    // Check to see if main buffer can copy to delay buffer without needing to wrap
+    if (delayBufferSize > bufferSize + writePosition)
+    {
+        // copy main buffer contents to delay buffer
+        delayBuffer.copyFromWithRamp(channel, writePosition, channelData, bufferSize, 0.1f, 0.1f);
+    }
+    else
+    {
+        // determine how much space is left at the end of delay buffer
+        auto spaceLeft = delayBufferSize - writePosition;
+        
+        // Copy that amount of content from main buffer to delay buffer
+        delayBuffer.copyFromWithRamp(channel, writePosition, channelData, spaceLeft, 0.1f, 0.1f);
+        
+        // Calculate how much content is remaining to copy
+        auto remainingToCopy = bufferSize - spaceLeft;
+        
+        // Copy that much amount at the beginning of delay buffer
+        delayBuffer.copyFromWithRamp(channel, 0, channelData, remainingToCopy, 0.1f, 0.1f);
     }
 }
 
