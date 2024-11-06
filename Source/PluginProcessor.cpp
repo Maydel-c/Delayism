@@ -138,31 +138,30 @@ void DelayismAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, juc
 
     for (auto i = totalNumInputChannels; i < totalNumOutputChannels; ++i)
         buffer.clear (i, 0, buffer.getNumSamples());
-    
-    auto bufferSize = buffer.getNumSamples();
-    auto delayBufferSize = delayBuffer.getNumSamples();
 
     for (int channel = 0; channel < totalNumInputChannels; ++channel)
     {
-        auto* channelData = buffer.getWritePointer (channel);
 
-        // copy input signal to the delayBuffer (used as circular buffer)
-        fillBuffer(channel, channelData, bufferSize, delayBufferSize);
-        
-        // read from past in the delayBuffer, then add back to main buffer
-        readFromBuffer(channel, delayBuffer, delayBufferSize, bufferSize, buffer);
-        
-        // copy input signal again to the delayBuffer (used as circular buffer) - main buffer which had the single delay effect, now writes that again into the delayBuffer giving a feedback loop
-        fillBuffer(channel, channelData, bufferSize, delayBufferSize);
+        fillBuffer(channel, buffer);
+        readFromBuffer(channel, delayBuffer, buffer);
+        fillBuffer(channel, buffer);
     }
+    
+    auto bufferSize = buffer.getNumSamples();
+    auto delayBufferSize = delayBuffer.getNumSamples();
     
     writePosition += bufferSize; // position jumps by this amount of samples on every iteration
     writePosition %= delayBufferSize; // bound position value to stay inside delayBufferSize
     
 }
 
-void DelayismAudioProcessor::fillBuffer(int channel, float* channelData, int bufferSize, int delayBufferSize)
+void DelayismAudioProcessor::fillBuffer(int channel, juce::AudioBuffer<float>& buffer)
 {
+    auto bufferSize = buffer.getNumSamples();
+    auto delayBufferSize = delayBuffer.getNumSamples();
+    
+    auto* channelData = buffer.getWritePointer (channel);
+    
     // Check to see if main buffer can copy to delay buffer without needing to wrap
     if (delayBufferSize > bufferSize + writePosition)
     {
@@ -185,12 +184,10 @@ void DelayismAudioProcessor::fillBuffer(int channel, float* channelData, int buf
     }
 }
 
-void DelayismAudioProcessor::readFromBuffer(int channel, juce::AudioBuffer<float>& delayBuffer, int delayBufferSize, int bufferSize, juce::AudioBuffer<float>& buffer)
+void DelayismAudioProcessor::readFromBuffer(int channel, juce::AudioBuffer<float>& delayBuffer, juce::AudioBuffer<float>& buffer)
 {
-    // writePosition = current position on the delay buffer
-    // readPosition = retrieving audio from 1 second in the past in the delay circular buffer = writePosition - sampleRate
-    // when writePosition = 0, 1 second in the past = -44100
-    // if(readPosition < 0) { readPosition = delayBufferSize + readPosition; }
+    auto bufferSize = buffer.getNumSamples();
+    auto delayBufferSize = delayBuffer.getNumSamples();
     
     auto readPosition = writePosition - (getSampleRate() * 0.5f);
     auto g = 0.7f;
