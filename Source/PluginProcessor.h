@@ -59,6 +59,7 @@ private:
     int writePosition { 0 }; // tracks position on the delay buffer where data from main buffer will be copied
     
     void fillBuffer(int channel, int writePosition, float* channelData, int bufferSize, int delayBufferSize);
+    void readFromBuffer(int channel, int delayBufferSize, int bufferSize, juce::AudioBuffer<float>& buffer);
     
     //==============================================================================
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (DelayismAudioProcessor)
