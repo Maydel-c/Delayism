@@ -52,6 +52,10 @@ public:
     //==============================================================================
     void getStateInformation (juce::MemoryBlock& destData) override;
     void setStateInformation (const void* data, int sizeInBytes) override;
+    
+    using APVTS = juce::AudioProcessorValueTreeState;
+    APVTS::ParameterLayout createParams();
+    APVTS params;
 
 private:
     
@@ -61,6 +65,9 @@ private:
     void fillBuffer(int channel, juce::AudioBuffer<float>& buffer);
     void readFromBuffer(int channel, juce::AudioBuffer<float>& delayBuffer, juce::AudioBuffer<float>& buffer);
     void updateBufferPositions(juce::AudioBuffer<float>& buffer, juce::AudioBuffer<float>& delayBuffer);
+    
+//    juce::SmoothValue<float, ValueSmoothingTypes:Linear> gain; // also works
+    juce::LinearSmoothedValue<float> gain;
     
     //==============================================================================
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (DelayismAudioProcessor)

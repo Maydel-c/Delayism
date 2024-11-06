@@ -19,7 +19,8 @@ DelayismAudioProcessor::DelayismAudioProcessor()
                       #endif
                        .withOutput ("Output", juce::AudioChannelSet::stereo(), true)
                      #endif
-                       )
+                       ),
+params(*this, nullptr, "Parameters", createParams())
 #endif
 {
 }
@@ -94,8 +95,9 @@ void DelayismAudioProcessor::changeProgramName (int index, const juce::String& n
 void DelayismAudioProcessor::prepareToPlay (double sampleRate, int samplesPerBlock)
 {
     auto delayBufferSize = sampleRate * 2.0;
-//    delayBuffer.setSize(getTotalNumOutputChannels(), (int)delayBufferSize);
     delayBuffer.setSize(getTotalNumOutputChannels(), static_cast<int>(delayBufferSize));
+    
+    gain.reset(sampleRate, 0.0005f);
 }
 
 void DelayismAudioProcessor::releaseResources()
@@ -148,6 +150,12 @@ void DelayismAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, juc
     }
     
     updateBufferPositions(buffer, delayBuffer);
+    
+    auto g = params.getRawParameterValue("Gain")->load();
+    gain.setTargetValue(g);
+    
+//    DBG(g);
+    DBG(gain.getNextValue()); // display gain value as the smoothing is happening
     
 }
 
@@ -239,6 +247,15 @@ void DelayismAudioProcessor::setStateInformation (const void* data, int sizeInBy
 {
     // You should use this method to restore your parameters from this memory block,
     // whose contents will have been created by the getStateInformation() call.
+}
+
+juce::AudioProcessorValueTreeState::ParameterLayout DelayismAudioProcessor::createParams()
+{
+    std::vector<std::unique_ptr<juce::AudioParameterFloat>> params;
+    
+    params.push_back(std::make_unique<juce::AudioParameterFloat>(juce::ParameterID{"Gain", 1}, "Gain", 0.0f, 1.0f, 0.0f));
+    
+    return { params.begin(), params.end() };
 }
 
 //==============================================================================
