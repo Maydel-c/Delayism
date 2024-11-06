@@ -153,6 +153,33 @@ void DelayismAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, juc
         auto* channelData = buffer.getWritePointer (channel);
 
         fillBuffer(channel, writePosition, channelData, bufferSize, delayBufferSize);
+        
+        // writePosition = current position on the delay buffer
+        // readPosition = retrieving audio from 1 second in the past in the delay circular buffer = writePosition - sampleRate
+        // when writePosition = 0, 1 second in the past = -44100
+        // if(readPosition < 0) { readPosition = delayBufferSize + readPosition; }
+        
+        auto readPosition = writePosition - getSampleRate();
+        auto g = 0.7f;
+        
+        if (readPosition < 0)
+        {
+            readPosition += delayBufferSize;
+        }
+        
+        if(readPosition + bufferSize < delayBufferSize)
+        {
+            buffer.addFromWithRamp(channel, 0, delayBuffer.getReadPointer(channel, readPosition), bufferSize, g, g);
+        }
+        else
+        {
+            auto numSamplesToEnd = delayBufferSize - readPosition; // samples that can be added to the main buffer before the delay before loops again
+            auto numSamplesToStart = bufferSize - numSamplesToEnd; // remaining samples are picked up from the start of the delay buffer
+            
+            buffer.addFromWithRamp(channel, 0, delayBuffer.getReadPointer(channel, readPosition), numSamplesToEnd, g, g);
+            buffer.addFromWithRamp(channel, numSamplesToEnd, delayBuffer.getReadPointer(channel, 0), numSamplesToStart, g, g);
+        }
+        
     }
     
     writePosition += bufferSize; // position jumps by this amount of samples on every iteration
@@ -180,7 +207,7 @@ void DelayismAudioProcessor::fillBuffer(int channel, int writePosition, float* c
         auto remainingToCopy = bufferSize - spaceLeft;
         
         // Copy that much amount at the beginning of delay buffer
-        delayBuffer.copyFromWithRamp(channel, 0, channelData, remainingToCopy, 0.1f, 0.1f);
+        delayBuffer.copyFromWithRamp(channel, 0, channelData + spaceLeft, remainingToCopy, 0.1f, 0.1f);
     }
 }
 
