@@ -147,11 +147,7 @@ void DelayismAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, juc
         fillBuffer(channel, buffer);
     }
     
-    auto bufferSize = buffer.getNumSamples();
-    auto delayBufferSize = delayBuffer.getNumSamples();
-    
-    writePosition += bufferSize; // position jumps by this amount of samples on every iteration
-    writePosition %= delayBufferSize; // bound position value to stay inside delayBufferSize
+    updateBufferPositions(buffer, delayBuffer);
     
 }
 
@@ -182,6 +178,15 @@ void DelayismAudioProcessor::fillBuffer(int channel, juce::AudioBuffer<float>& b
         // Copy that much amount at the beginning of delay buffer
         delayBuffer.copyFrom(channel, 0, channelData + numSamplesToEnd, numSamplesToStart);
     }
+}
+
+void DelayismAudioProcessor::updateBufferPositions(juce::AudioBuffer<float>& buffer, juce::AudioBuffer<float>& delayBuffer)
+{
+    auto bufferSize = buffer.getNumSamples();
+    auto delayBufferSize = delayBuffer.getNumSamples();
+    
+    writePosition += bufferSize; // position jumps by this amount of samples on every iteration
+    writePosition %= delayBufferSize; // bound position value to stay inside delayBufferSize
 }
 
 void DelayismAudioProcessor::readFromBuffer(int channel, juce::AudioBuffer<float>& delayBuffer, juce::AudioBuffer<float>& buffer)

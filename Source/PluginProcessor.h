@@ -60,6 +60,7 @@ private:
     
     void fillBuffer(int channel, juce::AudioBuffer<float>& buffer);
     void readFromBuffer(int channel, juce::AudioBuffer<float>& delayBuffer, juce::AudioBuffer<float>& buffer);
+    void updateBufferPositions(juce::AudioBuffer<float>& buffer, juce::AudioBuffer<float>& delayBuffer);
     
     //==============================================================================
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (DelayismAudioProcessor)
