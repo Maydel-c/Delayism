@@ -63,11 +63,15 @@ private:
     int writePosition { 0 }; // tracks position on the delay buffer where data from main buffer will be copied
     
     void fillBuffer(int channel, juce::AudioBuffer<float>& buffer);
-    void readFromBuffer(int channel, juce::AudioBuffer<float>& delayBuffer, juce::AudioBuffer<float>& buffer);
+    void readFromBuffer(int channel, juce::AudioBuffer<float>& delayBuffer, juce::AudioBuffer<float>& buffer, juce::LinearSmoothedValue<float> delayFactor);
     void updateBufferPositions(juce::AudioBuffer<float>& buffer, juce::AudioBuffer<float>& delayBuffer);
     
 //    juce::SmoothValue<float, ValueSmoothingTypes:Linear> gain; // also works
-    juce::LinearSmoothedValue<float> gain;
+//    juce::LinearSmoothedValue<float> delayTime;
+    
+//    float delayFactor;
+//    std::atomic<float> delayFactor;
+    juce::LinearSmoothedValue<float> delayFactor;
     
     //==============================================================================
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (DelayismAudioProcessor)

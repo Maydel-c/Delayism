@@ -23,6 +23,7 @@ DelayismAudioProcessor::DelayismAudioProcessor()
 params(*this, nullptr, "Parameters", createParams())
 #endif
 {
+    delayFactor = params.getRawParameterValue("Delay Time")->load();
 }
 
 DelayismAudioProcessor::~DelayismAudioProcessor()
@@ -97,7 +98,7 @@ void DelayismAudioProcessor::prepareToPlay (double sampleRate, int samplesPerBlo
     auto delayBufferSize = sampleRate * 2.0;
     delayBuffer.setSize(getTotalNumOutputChannels(), static_cast<int>(delayBufferSize));
     
-    gain.reset(sampleRate, 0.0005f);
+    delayFactor.reset(sampleRate, 0.001f);
 }
 
 void DelayismAudioProcessor::releaseResources()
@@ -140,23 +141,25 @@ void DelayismAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer, juc
 
     for (auto i = totalNumInputChannels; i < totalNumOutputChannels; ++i)
         buffer.clear (i, 0, buffer.getNumSamples());
-
+    
+    auto currentDelayFactor = params.getRawParameterValue("Delay Time")->load();
+    delayFactor.setTargetValue(currentDelayFactor);
+    
     for (int channel = 0; channel < totalNumInputChannels; ++channel)
     {
-
         fillBuffer(channel, buffer);
-        readFromBuffer(channel, delayBuffer, buffer);
+        readFromBuffer(channel, delayBuffer, buffer, delayFactor);
         fillBuffer(channel, buffer);
     }
     
+    DBG(delayFactor.getNextValue());
     updateBufferPositions(buffer, delayBuffer);
     
-    auto g = params.getRawParameterValue("Gain")->load();
-    gain.setTargetValue(g);
-    
-//    DBG(g);
-    DBG(gain.getNextValue()); // display gain value as the smoothing is happening
-    
+//    auto g = params.getRawParameterValue("Gain")->load();
+//    gain.setTargetValue(g);
+//
+////    DBG(g);
+//    DBG(gain.getNextValue()); // display gain value as the smoothing is happening
 }
 
 void DelayismAudioProcessor::fillBuffer(int channel, juce::AudioBuffer<float>& buffer)
@@ -197,12 +200,12 @@ void DelayismAudioProcessor::updateBufferPositions(juce::AudioBuffer<float>& buf
     writePosition %= delayBufferSize; // bound position value to stay inside delayBufferSize
 }
 
-void DelayismAudioProcessor::readFromBuffer(int channel, juce::AudioBuffer<float>& delayBuffer, juce::AudioBuffer<float>& buffer)
+void DelayismAudioProcessor::readFromBuffer(int channel, juce::AudioBuffer<float>& delayBuffer, juce::AudioBuffer<float>& buffer, juce::LinearSmoothedValue<float> delayFactor)
 {
     auto bufferSize = buffer.getNumSamples();
     auto delayBufferSize = delayBuffer.getNumSamples();
     
-    auto readPosition = writePosition - (getSampleRate() * 0.5f);
+    auto readPosition = writePosition - (getSampleRate() * delayFactor.getTargetValue());
     auto g = 0.7f;
     
     if (readPosition < 0)
@@ -232,7 +235,8 @@ bool DelayismAudioProcessor::hasEditor() const
 
 juce::AudioProcessorEditor* DelayismAudioProcessor::createEditor()
 {
-    return new DelayismAudioProcessorEditor (*this);
+//    return new DelayismAudioProcessorEditor (*this);
+    return new juce::GenericAudioProcessorEditor(*this);
 }
 
 //==============================================================================
@@ -253,7 +257,9 @@ juce::AudioProcessorValueTreeState::ParameterLayout DelayismAudioProcessor::crea
 {
     std::vector<std::unique_ptr<juce::AudioParameterFloat>> params;
     
-    params.push_back(std::make_unique<juce::AudioParameterFloat>(juce::ParameterID{"Gain", 1}, "Gain", 0.0f, 1.0f, 0.0f));
+//    params.push_back(std::make_unique<juce::AudioParameterFloat>(juce::ParameterID{"Gain", 1}, "Gain", 0.0f, 1.0f, 0.0f));
+    
+    params.push_back(std::make_unique<juce::AudioParameterFloat>(juce::ParameterID{"Delay Time", 1}, "Delay Time", juce::NormalisableRange<float>(0.25f, 1.0f, 0.01f, 1.f), 1.f));
     
     return { params.begin(), params.end() };
 }
